@@ -1,4 +1,8 @@
+wxPython
 playwright
-pyyaml
-aiohttp
-psutil
+pyinstaller
+requests
+beautifulsoup4
+lxml
+Pillow
+asyncio

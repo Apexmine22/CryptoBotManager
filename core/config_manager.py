@@ -18,12 +18,12 @@ class BrowserConfig:
     headless: bool = True
     viewport_width: int = 1920
     viewport_height: int = 1080
-    user_agent: str = ""
     timeout: int = 30000
     navigation_timeout: int = 60000
+    user_agent: str = ""
     disable_javascript: bool = False
     block_resources: bool = True
-    disable_css: bool = False
+    proxy_server: str = ""  # Добавьте эту строку если её нет
 
 
 @dataclass
@@ -279,8 +279,19 @@ async def is_logged_in(page: Page, config: UniversalBotConfig, bot: BaseBot) -> 
         logger.info("Создана пустая конфигурация ботов")
 
     def get_browser_config(self) -> BrowserConfig:
-        browser_data = self.data.get("browser", {})
-        return BrowserConfig(**browser_data)
+        """Получение конфигурации браузера"""
+        browser_config = self.config.get('browser', {})
+        return BrowserConfig(
+            headless=browser_config.get('headless', True),
+            viewport_width=browser_config.get('viewport_width', 1920),
+            viewport_height=browser_config.get('viewport_height', 1080),
+            timeout=browser_config.get('timeout', 30000),
+            navigation_timeout=browser_config.get('navigation_timeout', 60000),
+            user_agent=browser_config.get('user_agent', ''),
+            disable_javascript=browser_config.get('disable_javascript', False),
+            block_resources=browser_config.get('block_resources', True),
+            proxy_server=browser_config.get('proxy_server', '')  # Убедитесь что этот атрибут есть
+        )
 
     def get_captcha_config(self) -> CaptchaConfig:
         captcha_data = self.data.get("captcha", {})

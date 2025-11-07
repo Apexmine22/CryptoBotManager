@@ -104,7 +104,7 @@ class UniversalBot(BaseBot):
             await self._random_delay(1, 2)
 
         # Обработка капчи перед нажатием кнопки входа
-        if await self._handle_captcha(page):
+        if await self._handle_captcha(page, captcha_type="auto"):
             await self._random_delay(2, 3)
 
         if selectors.login_button and await page.is_visible(selectors.login_button):
@@ -282,9 +282,14 @@ class UniversalBot(BaseBot):
             return False
 
         # Проверяем капчу перед нажатием
-        if await self._check_captcha_present(page):
-            await self._handle_captcha(page)
-            await self._random_delay(2, 3)
+        # if await self._check_captcha_present(page):
+        #     await self._handle_captcha(page)
+        #     await self._random_delay(2, 3)
+
+        await self._handle_captcha(page, captcha_type="antibot")
+        await self._random_delay(2, 3)
+        await self._handle_captcha(page, captcha_type="hcaptcha")
+        await self._random_delay(2, 3)
 
         await page.click(faucet_button)
         await self._random_delay(4, 6)
@@ -334,10 +339,15 @@ class UniversalBot(BaseBot):
     # ------------------------------------------------------------------
     #   Обработка капчи (hcaptcha / recaptcha / antibot / image)
     # ------------------------------------------------------------------
-    async def _handle_captcha(self, page) -> bool:
+    async def _handle_captcha(self, page, captcha_type) -> bool:
         try:
             captcha_cfg = self.universal_config.captcha
-            captcha_type = captcha_cfg.captcha_type
+            if captcha_type == "antibot":
+                captcha_type = "antibot"
+            elif captcha_type == "hcaptcha":
+                captcha_type = "hcaptcha"
+            else:
+                captcha_type = captcha_cfg.captcha_type
 
             # Автоматическое определение типа, если указано «auto»
             if captcha_type == "auto":
