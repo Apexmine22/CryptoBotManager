@@ -1,4 +1,5 @@
-# 🤖 CryptoBot Manager - Modern Dark Edition
+# 🤖 CryptoBot Manager - В разработке
+## DEVELOPER: FrostyB1te
 
 ## 🎯 О проекте
 
