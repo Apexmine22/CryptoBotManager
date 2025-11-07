@@ -350,7 +350,6 @@ class BotManagerFrame(wx.Frame):
                                wx.YES_NO | wx.ICON_QUESTION)
 
         if result == wx.YES:
-            # TODO: Реализовать удаление бота из конфигурации
             async def delete_bot():
                 # Удаляем бота из конфигурации
                 if "bots" in self.config_manager.bot_data:
