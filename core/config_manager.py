@@ -1,6 +1,6 @@
 # core/config_manager.py
 """
-Менеджер конфигурации v3.0 – поддержка шаблонов
+Менеджер конфигурации v4.1 - исправленная версия
 """
 
 import os
@@ -23,7 +23,7 @@ class BrowserConfig:
     user_agent: str = ""
     disable_javascript: bool = False
     block_resources: bool = True
-    proxy_server: str = ""  # Добавьте эту строку если её нет
+    proxy_server: str = ""
 
 
 @dataclass
@@ -73,6 +73,8 @@ class BotSettingsConfig:
     random_delays: bool = True
     min_delay: int = 2
     max_delay: int = 5
+    block_resources: bool = True  # Добавлен отсутствующий атрибут
+    disable_javascript: bool = False  # Добавлен для совместимости
 
 
 @dataclass
@@ -94,24 +96,19 @@ class UniversalBotConfig:
     url: str
     email: str
     password: str
-
-    # Новое поле для указания шаблона
     template: str = ""
-
     cycle_delay: int = 300
     currency_delay: int = 3
     max_consecutive_errors: int = 5
     stop_on_critical_error: bool = True
-
     login_selectors: BotSelectorConfig = field(default_factory=BotSelectorConfig)
     action_selectors: BotSelectorConfig = field(default_factory=BotSelectorConfig)
     navigation: BotNavigationConfig = field(default_factory=BotNavigationConfig)
     settings: BotSettingsConfig = field(default_factory=BotSettingsConfig)
     captcha: CaptchaSettingsConfig = field(default_factory=CaptchaSettingsConfig)
-
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    version: str = "3.0"
+    version: str = "4.1"
 
 
 class ConfigManager:
@@ -125,90 +122,37 @@ class ConfigManager:
 
         self.load_config()
         self.load_bot_config()
-        self._ensure_templates()
+        self._ensure_directories()
 
-    def _ensure_templates(self):
-        """Создание папки templates и примеров шаблонов"""
-        templates_dir = Path("templates")
-        templates_dir.mkdir(exist_ok=True)
+    def _ensure_directories(self):
+        """Создание необходимых директорий"""
+        directories = [
+            "data/cookies",
+            "data/screenshots",
+            "data/logs",
+            "templates",
+            "logs"
+        ]
 
-        # Создание примера шаблона, если его нет
-        example_template = templates_dir / "example.py"
-        if not example_template.exists():
-            self._create_example_template()
-
-    def _create_example_template(self):
-        """Создание примера шаблона"""
-        example_code = '''"""
-Пример шаблона бота
-"""
-import asyncio
-from playwright.async_api import Page
-
-from core.base_bot import BaseBot, BotStatus
-from core.config_manager import UniversalBotConfig
-from utils.logger import logger
-
-
-async def login(page: Page, config: UniversalBotConfig, bot: BaseBot) -> bool:
-    """Пример функции логина"""
-    try:
-        bot.update_status(BotStatus.LOGGING_IN, "Пример логина")
-
-        await page.goto(config.url)
-        await asyncio.sleep(2)
-
-        # Ваша логика авторизации здесь
-        logger.info(f"Выполняется логин для {config.name}")
-
-        return True
-    except Exception as e:
-        logger.error(f"Ошибка логина: {e}")
-        return False
-
-
-async def perform_actions(page: Page, config: UniversalBotConfig, bot: BaseBot) -> bool:
-    """Пример функции выполнения действий"""
-    try:
-        bot.update_status(BotStatus.WORKING, "Пример действий")
-
-        # Ваша логика действий здесь
-        logger.info(f"Выполняются действия для {config.name}")
-
-        return True
-    except Exception as e:
-        logger.error(f"Ошибка действий: {e}")
-        return False
-
-
-async def is_logged_in(page: Page, config: UniversalBotConfig, bot: BaseBot) -> bool:
-    """Пример проверки авторизации"""
-    try:
-        # Ваша логика проверки здесь
-        return True
-    except Exception:
-        return False
-'''
-        with open(Path("templates") / "example.py", "w", encoding="utf-8") as f:
-            f.write(example_code)
-
-        logger.info("Создан пример шаблона: templates/example.py")
+        for directory in directories:
+            Path(directory).mkdir(parents=True, exist_ok=True)
 
     def load_config(self):
+        """Загрузка основной конфигурации"""
         if not self.config_path.exists():
             self.create_default_config()
-            return
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 self.data = yaml.safe_load(f) or {}
-            logger.info("Основная конфигурация загружена")
+            logger.info("✅ Основная конфигурация загружена")
         except Exception as e:
-            logger.error(f"Ошибка загрузки конфигурации: {e}")
+            logger.error(f"❌ Ошибка загрузки конфигурации: {e}")
             self.create_default_config()
 
     def create_default_config(self):
+        """Создание конфигурации по умолчанию"""
         default_config = {
-            "version": "3.0",
+            "version": "4.1",
             "browser": {
                 "headless": True,
                 "viewport_width": 1920,
@@ -218,157 +162,129 @@ async def is_logged_in(page: Page, config: UniversalBotConfig, bot: BaseBot) -> 
                 "navigation_timeout": 60000,
                 "disable_javascript": False,
                 "block_resources": True,
-                "disable_css": False,
             },
             "captcha": {
                 "service_url": "http://api.multibot.in",
-                "api_key": "your_api_key_here",
+                "api_key": "",
                 "timeout": 120,
                 "sleep": 5,
                 "verify_ssl": False,
             },
-            "proxy": {
-                "enable_proxy": False,
-                "proxy_url": "",
-                "proxy_type": "HTTP",
-                "rotation_enabled": False,
-                "rotation_interval": 10,
-                "proxy_list": [],
-            },
             "general": {
                 "auto_start": False,
-                "minimize_to_tray": False,
-                "auto_update": True,
-                "ui_update_interval": 2000,
-            },
-            "logging": {
-                "level": "INFO",
-                "save_to_file": True,
-                "max_size_mb": 100,
+                "default_email": "",
+                "default_password": "",
             }
         }
+
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.config_path, "w", encoding="utf-8") as f:
             yaml.dump(default_config, f, default_flow_style=False,
                       allow_unicode=True, indent=2)
         self.data = default_config
-        logger.info("Создана конфигурация по умолчанию")
+        logger.info("✅ Создана конфигурация по умолчанию")
 
     def load_bot_config(self):
+        """Загрузка конфигурации ботов"""
         if not self.bot_config_path.exists():
             self.create_default_bot_config()
-            return
         try:
             with open(self.bot_config_path, "r", encoding="utf-8") as f:
                 self.bot_data = yaml.safe_load(f) or {}
-            logger.info("Конфигурация ботов загружена")
+            logger.info("✅ Конфигурация ботов загружена")
         except Exception as e:
-            logger.error(f"Ошибка загрузки bot_config.yaml: {e}")
+            logger.error(f"❌ Ошибка загрузки bot_config.yaml: {e}")
             self.create_default_bot_config()
 
     def create_default_bot_config(self):
+        """Создание конфигурации ботов по умолчанию"""
         default_bot_config = {
-            "version": "3.0",
+            "version": "4.1",
             "bots": {},
         }
+
         self.bot_config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.bot_config_path, "w", encoding="utf-8") as f:
             yaml.dump(default_bot_config, f, default_flow_style=False,
                       allow_unicode=True, indent=2)
         self.bot_data = default_bot_config
-        logger.info("Создана пустая конфигурация ботов")
+        logger.info("✅ Создана конфигурация ботов по умолчанию")
 
     def get_browser_config(self) -> BrowserConfig:
         """Получение конфигурации браузера"""
-        browser_config = self.config.get('browser', {})
-        return BrowserConfig(
-            headless=browser_config.get('headless', True),
-            viewport_width=browser_config.get('viewport_width', 1920),
-            viewport_height=browser_config.get('viewport_height', 1080),
-            timeout=browser_config.get('timeout', 30000),
-            navigation_timeout=browser_config.get('navigation_timeout', 60000),
-            user_agent=browser_config.get('user_agent', ''),
-            disable_javascript=browser_config.get('disable_javascript', False),
-            block_resources=browser_config.get('block_resources', True),
-            proxy_server=browser_config.get('proxy_server', '')  # Убедитесь что этот атрибут есть
-        )
+        browser_data = self.data.get('browser', {})
+        return BrowserConfig(**browser_data)
 
     def get_captcha_config(self) -> CaptchaConfig:
+        """Получение конфигурации капчи"""
         captcha_data = self.data.get("captcha", {})
         return CaptchaConfig(**captcha_data)
 
     def get_universal_bot_configs(self) -> List[UniversalBotConfig]:
-        bots_cfg: List[UniversalBotConfig] = []
+        """Получение конфигураций всех ботов"""
+        bots_cfg = []
         bots_dict = self.bot_data.get("bots", {})
 
-        for bot_key, bot_cfg in bots_dict.items():
+        for bot_key, bot_data in bots_dict.items():
             try:
-                # Обеспечиваем обратную совместимость
-                if not isinstance(bot_cfg, dict):
+                if not isinstance(bot_data, dict):
                     continue
 
-                login_sel = BotSelectorConfig(**bot_cfg.get("login_selectors", {}))
-                action_sel = BotSelectorConfig(**bot_cfg.get("action_selectors", {}))
-                navigation = BotNavigationConfig(**bot_cfg.get("navigation", {}))
-                settings = BotSettingsConfig(**bot_cfg.get("settings", {}))
-                captcha = CaptchaSettingsConfig(**bot_cfg.get("captcha", {}))
+                # Создаем объекты конфигурации
+                login_selectors = BotSelectorConfig(**bot_data.get("login_selectors", {}))
+                action_selectors = BotSelectorConfig(**bot_data.get("action_selectors", {}))
+                navigation = BotNavigationConfig(**bot_data.get("navigation", {}))
+                settings = BotSettingsConfig(**bot_data.get("settings", {}))
+                captcha = CaptchaSettingsConfig(**bot_data.get("captcha", {}))
 
-                bot = UniversalBotConfig(
-                    name=bot_cfg.get("name", bot_key),
-                    enabled=bot_cfg.get("enabled", False),
-                    url=bot_cfg.get("url", ""),
-                    email=bot_cfg.get("email", ""),
-                    password=bot_cfg.get("password", ""),
-                    template=bot_cfg.get("template", ""),  # Новое поле
-                    cycle_delay=bot_cfg.get("cycle_delay", 300),
-                    currency_delay=bot_cfg.get("currency_delay", 3),
-                    max_consecutive_errors=bot_cfg.get("max_consecutive_errors", 5),
-                    stop_on_critical_error=bot_cfg.get("stop_on_critical_error", True),
-                    login_selectors=login_sel,
-                    action_selectors=action_sel,
+                bot_config = UniversalBotConfig(
+                    name=bot_data.get("name", bot_key),
+                    enabled=bot_data.get("enabled", False),
+                    url=bot_data.get("url", ""),
+                    email=bot_data.get("email", ""),
+                    password=bot_data.get("password", ""),
+                    template=bot_data.get("template", ""),
+                    cycle_delay=bot_data.get("cycle_delay", 300),
+                    currency_delay=bot_data.get("currency_delay", 3),
+                    max_consecutive_errors=bot_data.get("max_consecutive_errors", 5),
+                    stop_on_critical_error=bot_data.get("stop_on_critical_error", True),
+                    login_selectors=login_selectors,
+                    action_selectors=action_selectors,
                     navigation=navigation,
                     settings=settings,
                     captcha=captcha,
                 )
-                bots_cfg.append(bot)
+                bots_cfg.append(bot_config)
             except Exception as e:
-                logger.error(f"Ошибка загрузки конфигурации бота {bot_key}: {e}")
+                logger.error(f"❌ Ошибка загрузки конфигурации бота {bot_key}: {e}")
                 continue
+
         return bots_cfg
 
     def save_bot_config(self):
+        """Сохранение конфигурации ботов"""
         try:
             with open(self.bot_config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.bot_data, f, default_flow_style=False,
                           allow_unicode=True, indent=2)
-            logger.info("Конфигурация ботов сохранена")
+            logger.info("✅ Конфигурация ботов сохранена")
         except Exception as e:
-            logger.error(f"Ошибка сохранения конфигурации ботов: {e}")
+            logger.error(f"❌ Ошибка сохранения конфигурации ботов: {e}")
 
     def save_config(self):
+        """Сохранение основной конфигурации"""
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.data, f, default_flow_style=False,
                           allow_unicode=True, indent=2)
-            logger.info("Основная конфигурация сохранена")
+            logger.info("✅ Основная конфигурация сохранена")
         except Exception as e:
-            logger.error(f"Ошибка сохранения основной конфигурации: {e}")
-
-    def get_wallets(self) -> Dict[str, str]:
-        return self.bot_data.get("wallets", {})
-
-    def set_wallets(self, wallets: Dict[str, str]) -> None:
-        self.bot_data["wallets"] = wallets
-        self.save_bot_config()
+            logger.error(f"❌ Ошибка сохранения основной конфигурации: {e}")
 
     def get_available_templates(self) -> List[str]:
         """Получение списка доступных шаблонов"""
         templates_dir = Path("templates")
         if not templates_dir.exists():
             return []
-
-        templates = []
-        for f in templates_dir.glob("*.py"):
-            if f.is_file() and f.name != "__init__.py":
-                templates.append(f.stem)
-        return sorted(templates)
+        return sorted([f.stem for f in templates_dir.glob("*.py")
+                       if f.is_file() and f.name != "__init__.py"])

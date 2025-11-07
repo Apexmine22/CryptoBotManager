@@ -1,7 +1,8 @@
 # core/bot_manager.py
 """
-Менеджер ботов v3.1 - исправления
+Менеджер ботов v4.0 - оптимизированная версия
 """
+
 import asyncio
 import time
 from typing import Dict, List, Optional, Any
@@ -40,7 +41,7 @@ class BotManager:
             await self.reload_bots()
 
             self.initialized = True
-            logger.success("BotManager инициализирован с поддержкой шаблонов")
+            logger.success("✅ BotManager инициализирован")
 
             # Запуск фоновых задач
             asyncio.create_task(self._health_check_loop())
@@ -48,26 +49,25 @@ class BotManager:
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка инициализации BotManager: {e}")
+            logger.error(f"❌ Ошибка инициализации BotManager: {e}")
             return False
 
-    async def _create_bot_instance(self, config: UniversalBotConfig):
+    async def _create_bot_instance(self, config: UniversalBotConfig) -> bool:
         """Создание экземпляра бота на основе типа"""
         try:
-            # Определяем тип бота: шаблонный или универсальный
             if hasattr(config, 'template') and config.template:
                 bot_instance = TemplateBot(config, self.config_manager)
-                logger.info(f"Создан шаблонный бот: {config.name} (шаблон: {config.template})")
+                logger.info(f"✅ Создан шаблонный бот: {config.name} (шаблон: {config.template})")
             else:
                 from .universal_bot import UniversalBot
                 bot_instance = UniversalBot(config, self.config_manager)
-                logger.info(f"Создан универсальный бот: {config.name}")
+                logger.info(f"✅ Создан универсальный бот: {config.name}")
 
             self.bots[config.name] = bot_instance
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка создания бота {config.name}: {e}")
+            logger.error(f"❌ Ошибка создания бота {config.name}: {e}")
             return False
 
     async def start_all(self):
@@ -82,7 +82,7 @@ class BotManager:
             if bot.config.enabled and name not in self.tasks
         ]
 
-        logger.info(f"Запуск {len(enabled_bots)} ботов...")
+        logger.info(f"🚀 Запуск {len(enabled_bots)} ботов...")
 
         for bot_name in enabled_bots:
             await self.start_bot(bot_name)
@@ -90,10 +90,10 @@ class BotManager:
     async def stop_all(self):
         """Остановка всех ботов"""
         if not self.tasks:
-            logger.info("Нет запущенных ботов")
+            logger.info("ℹ️ Нет запущенных ботов")
             return
 
-        logger.info(f"Остановка {len(self.tasks)} ботов...")
+        logger.info(f"🛑 Остановка {len(self.tasks)} ботов...")
 
         for bot_name in list(self.tasks.keys()):
             await self.stop_bot(bot_name)
@@ -102,27 +102,27 @@ class BotManager:
         """Запуск конкретного бота"""
         try:
             if bot_name not in self.bots:
-                logger.error(f"Бот не найден: {bot_name}")
+                logger.error(f"❌ Бот не найден: {bot_name}")
                 return False
 
             bot = self.bots[bot_name]
 
             if not bot.config.enabled:
-                logger.warning(f"Бот {bot_name} отключен в конфигурации")
+                logger.warning(f"⚠️ Бот {bot_name} отключен в конфигурации")
                 return False
 
             if bot_name in self.tasks and not self.tasks[bot_name].done():
-                logger.info(f"Бот {bot_name} уже запущен")
+                logger.info(f"ℹ️ Бот {bot_name} уже запущен")
                 return True
 
             task = asyncio.create_task(self._run_bot_safe(bot_name, bot))
             self.tasks[bot_name] = task
 
-            logger.success(f"Бот {bot_name} запущен")
+            logger.success(f"🚀 Бот {bot_name} запущен")
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка запуска бота {bot_name}: {e}")
+            logger.error(f"❌ Ошибка запуска бота {bot_name}: {e}")
             return False
 
     async def _run_bot_safe(self, bot_name: str, bot: BaseBot):
@@ -130,9 +130,9 @@ class BotManager:
         try:
             await bot.run()
         except asyncio.CancelledError:
-            logger.info(f"Бот {bot_name} остановлен")
+            logger.info(f"🛑 Бот {bot_name} остановлен")
         except Exception as e:
-            logger.error(f"Бот {bot_name} завершился с ошибкой: {e}")
+            logger.error(f"❌ Бот {bot_name} завершился с ошибкой: {e}")
         finally:
             self.tasks.pop(bot_name, None)
 
@@ -140,7 +140,7 @@ class BotManager:
         """Остановка конкретного бота"""
         try:
             if bot_name not in self.tasks:
-                logger.warning(f"Бот {bot_name} не запущен")
+                logger.warning(f"⚠️ Бот {bot_name} не запущен")
                 return True
 
             bot = self.bots[bot_name]
@@ -155,11 +155,11 @@ class BotManager:
                     pass
 
             self.tasks.pop(bot_name, None)
-            logger.info(f"Бот {bot_name} остановлен")
+            logger.info(f"🛑 Бот {bot_name} остановлен")
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка остановки бота {bot_name}: {e}")
+            logger.error(f"❌ Ошибка остановки бота {bot_name}: {e}")
             return False
 
     async def restart_bot(self, bot_name: str) -> bool:
@@ -169,7 +169,7 @@ class BotManager:
             await asyncio.sleep(2)
             return await self.start_bot(bot_name)
         except Exception as e:
-            logger.error(f"Ошибка перезапуска бота {bot_name}: {e}")
+            logger.error(f"❌ Ошибка перезапуска бота {bot_name}: {e}")
             return False
 
     def get_bot_status(self, bot_name: str) -> Optional[Dict[str, Any]]:
@@ -196,12 +196,7 @@ class BotManager:
 
     def get_all_bot_statuses(self) -> List[Dict[str, Any]]:
         """Получение статусов всех ботов"""
-        statuses = []
-        for name in self.bots:
-            status = self.get_bot_status(name)
-            if status is not None:
-                statuses.append(status)
-        return statuses
+        return [self.get_bot_status(name) for name in self.bots if self.get_bot_status(name) is not None]
 
     def get_bot_count(self) -> int:
         """Получение количества ботов"""
@@ -218,16 +213,15 @@ class BotManager:
                 await self._perform_health_check()
                 await asyncio.sleep(self.health_check_interval)
             except Exception as e:
-                logger.error(f"Ошибка в health check: {e}")
+                logger.error(f"❌ Ошибка в health check: {e}")
                 await asyncio.sleep(30)
 
     async def _perform_health_check(self):
         """Выполнение проверки здоровья"""
         for bot_name, task in list(self.tasks.items()):
             if task.done():
-                logger.warning(f"Бот {bot_name} завершил работу, перезапуск...")
+                logger.warning(f"⚠️ Бот {bot_name} завершил работу, перезапуск...")
                 self.tasks.pop(bot_name, None)
-                # Перезапускаем только если бот включен
                 if bot_name in self.bots and self.bots[bot_name].config.enabled:
                     await self.restart_bot(bot_name)
 
@@ -236,7 +230,7 @@ class BotManager:
         self._stop_event.set()
         await self.stop_all()
         self.initialized = False
-        logger.info("BotManager завершил работу")
+        logger.info("✅ BotManager завершил работу")
 
     async def reload_bots(self):
         """Перезагрузка ботов из конфигурации"""
@@ -245,7 +239,8 @@ class BotManager:
 
         # Загрузка конфигурации ботов
         bot_configs = self.config_manager.get_universal_bot_configs()
-        for config in bot_configs:
-            await self._create_bot_instance(config)
+        creation_tasks = [self._create_bot_instance(config) for config in bot_configs]
+        results = await asyncio.gather(*creation_tasks, return_exceptions=True)
 
-        logger.info(f"Перезагружено {len(bot_configs)} ботов")
+        successful_creations = sum(1 for result in results if result is True)
+        logger.info(f"✅ Перезагружено {successful_creations}/{len(bot_configs)} ботов")

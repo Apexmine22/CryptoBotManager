@@ -1,12 +1,14 @@
+# utils/logger.py
 """
-Унифицированная система логирования v2.0
+Унифицированная система логирования v3.0 - оптимизированная
 """
+
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 from datetime import datetime
 import threading
+from typing import Optional
 
 
 class SingletonMeta(type):
@@ -26,13 +28,13 @@ class ColoredFormatter(logging.Formatter):
     """Форматтер с цветами для консоли"""
 
     COLORS = {
-        'DEBUG': '\033[36m',  # Cyan
-        'INFO': '\033[32m',  # Green
-        'WARNING': '\033[33m',  # Yellow
-        'ERROR': '\033[31m',  # Red
-        'CRITICAL': '\033[35m',  # Magenta
-        'SUCCESS': '\033[92m',  # Bright Green
-        'RESET': '\033[0m'  # Reset
+        'DEBUG': '\033[36m',      # Cyan
+        'INFO': '\033[32m',       # Green  
+        'WARNING': '\033[33m',    # Yellow
+        'ERROR': '\033[31m',      # Red
+        'CRITICAL': '\033[35m',   # Magenta
+        'SUCCESS': '\033[92m',    # Bright Green
+        'RESET': '\033[0m'        # Reset
     }
 
     def format(self, record):
@@ -56,10 +58,9 @@ class BotLogger(metaclass=SingletonMeta):
         if self._initialized:
             return
 
-        # Создание директории для логов
         self._log_dir.mkdir(exist_ok=True)
 
-        # Настройка корневого логгера
+        # Корневой логгер
         self.logger = logging.getLogger("CryptoBotManager")
         self.logger.setLevel(logging.INFO)
 
@@ -79,10 +80,8 @@ class BotLogger(metaclass=SingletonMeta):
         )
 
         # Файловый обработчик
-        file_handler = logging.FileHandler(
-            self._log_dir / "application.log",
-            encoding='utf-8'
-        )
+        log_file = self._log_dir / f"application_{datetime.now().strftime('%Y%m%d')}.log"
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(logging.INFO)
 
@@ -98,28 +97,22 @@ class BotLogger(metaclass=SingletonMeta):
         self._initialized = True
 
     def info(self, message: str):
-        """Информационное сообщение"""
         self.logger.info(message)
 
     def error(self, message: str):
-        """Сообщение об ошибке"""
         self.logger.error(message)
 
     def warning(self, message: str):
-        """Предупреждение"""
         self.logger.warning(message)
 
     def debug(self, message: str):
-        """Отладочное сообщение"""
         self.logger.debug(message)
 
     def success(self, message: str):
-        """Сообщение об успехе"""
         extra = {'color': 'SUCCESS'}
         self.logger.info(f"✅ {message}", extra=extra)
 
     def critical(self, message: str):
-        """Критическое сообщение"""
         self.logger.critical(message)
 
 
@@ -128,11 +121,7 @@ logger = BotLogger()
 
 
 def setup_logging():
-    """
-    Инициализировать систему логирования.
-    Фактически создаётся (или возвращается) единственный объект BotLogger.
-    """
-    # Экземпляр создаётся единожды благодаря SingletonMeta
+    """Инициализация системы логирования"""
     BotLogger()
 
 

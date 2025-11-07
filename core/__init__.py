@@ -1,5 +1,6 @@
+# core/__init__.py
 """
-Ядро приложения Crypto Bot Manager
+Ядро приложения Crypto Bot Manager - современная архитектура
 """
 
 from .base_bot import BaseBot, BotStatus, BotStats
